@@ -6,6 +6,8 @@ declare global {
       NEXT_PUBLIC_SUPABASE_URL?: string;
       NEXT_PUBLIC_SUPABASE_ANON_KEY?: string;
       SUPABASE_SERVICE_ROLE_KEY?: string;
+      DATABASE_URL?: string;
+      DATABASE_DIRECT_URL?: string;
       ANTHROPIC_API_KEY?: string;
       CBC_API_URL?: string;
       CBC_API_KEY?: string;
