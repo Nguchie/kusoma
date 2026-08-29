@@ -1,36 +1,9 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Kusoma
 
-## Getting Started
+Independent tutors in Kenya only see a student for a few hours a week. Between sessions, homework sits unanswered, practice does not follow the CBC topic they assigned, and parents get little besides “they’re doing fine.” Generic chatbots do not know Grade 5 Maths strands, and tutors have no simple way to see who engaged, where a child is stuck, or to send a weekly note home.
 
-First, run the development server:
+Kusoma closes that gap: the tutor assigns a real CBC Mathematics topic, the student practices and gets homework help in chat (identify by phone, no login), and the tutor sees progress and can share a parent report. Tutoring is grounded in Kenya’s curriculum via a separate CBC API.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Tutors get a PWA dashboard (roster, assignments, engagement, weekly parent-report drafts). Claude runs on Amazon Bedrock. Chat sessions live in Redis; scheduled nudges and reports run in a worker. Auth and data sit in Supabase.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Student chat is web-first; the messaging layer is built so WhatsApp can be added later without changing tutoring logic.
