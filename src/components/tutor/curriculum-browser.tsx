@@ -9,6 +9,7 @@ import {
 } from "@/components/tutor/styles";
 import type {
   CurriculumStrand,
+  CurriculumSubStrand,
   CurriculumTree,
 } from "@/lib/cbc/tree";
 
@@ -16,32 +17,37 @@ type CurriculumBrowserProps = {
   grade: number;
   studentId: string;
   onAssigned: () => void;
+  onCancel?: () => void;
   subject?: string;
-  assignLabel?: string;
+};
+
+type SelectedTopic = {
+  id: string;
+  title: string;
+  strand: string;
+  subStrand: string;
 };
 
 function treeUrl(grade: number, subject: string) {
   return `/api/curriculum/${grade}/${encodeURIComponent(subject)}`;
 }
 
+const rowClass =
+  "flex w-full items-center justify-between gap-3 rounded-md border border-zinc-200 px-3 py-3 text-left text-sm dark:border-zinc-800";
+
 export function CurriculumBrowser({
   grade,
   studentId,
   onAssigned,
+  onCancel,
   subject = "mathematics",
-  assignLabel = "Assign topic",
 }: CurriculumBrowserProps) {
   const [tree, setTree] = useState<CurriculumTree | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [openStrand, setOpenStrand] = useState<string | null>(null);
-  const [openSub, setOpenSub] = useState<string | null>(null);
-  const [selected, setSelected] = useState<{
-    id: string;
-    title: string;
-    strand: string;
-    subStrand: string;
-  } | null>(null);
+  const [strand, setStrand] = useState<CurriculumStrand | null>(null);
+  const [sub, setSub] = useState<CurriculumSubStrand | null>(null);
+  const [queued, setQueued] = useState<SelectedTopic[]>([]);
   const [difficulty, setDifficulty] = useState("intermediate");
   const [pending, setPending] = useState(false);
 
@@ -105,8 +111,76 @@ export function CurriculumBrowser({
     };
   }, [grade, subject]);
 
-  async function assign() {
-    if (!selected) return;
+  function goBack() {
+    setError(null);
+    if (sub) {
+      setSub(null);
+      return;
+    }
+    if (strand) {
+      setStrand(null);
+      return;
+    }
+    onCancel?.();
+  }
+
+  function toggleTopic(topic: SelectedTopic) {
+    setQueued((current) => {
+      if (current.some((item) => item.id === topic.id)) {
+        return current.filter((item) => item.id !== topic.id);
+      }
+      return [...current, topic];
+    });
+  }
+
+  function isQueued(id: string) {
+    return queued.some((item) => item.id === id);
+  }
+
+  function chooseStrand(next: CurriculumStrand) {
+    const drillable = next.subStrands.filter((row) => row.outcomes.length > 0);
+    if (drillable.length === 1) {
+      setStrand(next);
+      setSub(drillable[0]);
+      return;
+    }
+    if (drillable.length === 0 && next.id) {
+      toggleTopic({
+        id: next.id,
+        title: next.title,
+        strand: next.title,
+        subStrand: next.title,
+      });
+      return;
+    }
+    setSub(null);
+    setStrand(next);
+  }
+
+  function chooseSub(next: CurriculumSubStrand, parent: CurriculumStrand) {
+    if (next.outcomes.length === 0 && next.id) {
+      toggleTopic({
+        id: next.id,
+        title: next.title,
+        strand: parent.title,
+        subStrand: next.title,
+      });
+      return;
+    }
+    if (next.outcomes.length === 1) {
+      toggleTopic({
+        id: next.outcomes[0].id,
+        title: next.outcomes[0].title,
+        strand: parent.title,
+        subStrand: next.title,
+      });
+      return;
+    }
+    setSub(next);
+  }
+
+  async function save() {
+    if (queued.length === 0) return;
     setPending(true);
     setError(null);
     try {
@@ -114,19 +188,22 @@ export function CurriculumBrowser({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          cbc_node_id: selected.id,
           difficulty,
-          strand: selected.strand,
-          sub_strand: selected.subStrand,
-          learning_outcome: selected.title,
+          topics: queued.map((topic) => ({
+            cbc_node_id: topic.id,
+            strand: topic.strand,
+            sub_strand: topic.subStrand,
+            learning_outcome: topic.title,
+            difficulty,
+          })),
         }),
       });
       const data = (await response.json()) as { error?: string };
       if (!response.ok) {
-        setError(data.error ?? "Could not assign that topic.");
+        setError(data.error ?? "Could not save those topics.");
         return;
       }
-      setSelected(null);
+      setQueued([]);
       onAssigned();
     } catch {
       setError("Network error. Try again.");
@@ -135,9 +212,15 @@ export function CurriculumBrowser({
     }
   }
 
-  function strandKey(strand: CurriculumStrand, index: number) {
-    return strand.id ?? `strand-${index}`;
-  }
+  const canGoBack = Boolean(sub || strand || onCancel);
+  const subjectLabel = subject.charAt(0).toUpperCase() + subject.slice(1);
+  const crumb = [
+    `Grade ${grade} ${subjectLabel}`,
+    strand?.title,
+    sub && sub.title !== strand?.title ? sub.title : null,
+  ]
+    .filter(Boolean)
+    .join(" → ");
 
   if (loading) {
     return <p className="text-sm text-zinc-500">Loading curriculum…</p>;
@@ -174,117 +257,172 @@ export function CurriculumBrowser({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">
-        Grade {grade} {subject.charAt(0).toUpperCase() + subject.slice(1)}. Pick
-        a learning outcome.
+      <div className="flex flex-wrap items-center gap-2">
+        {canGoBack ? (
+          <button type="button" className={secondaryButtonClass} onClick={goBack}>
+            Back
+          </button>
+        ) : null}
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">{crumb}</p>
+      </div>
+
+      <p className="text-sm text-zinc-500">
+        Add as many topics as you like, then save. Chat practice uses the most
+        recently saved topic.
       </p>
-      <ul className="flex flex-col gap-2">
-        {tree.strands.map((strand, strandIndex) => {
-          const key = strandKey(strand, strandIndex);
-          const open = openStrand === key;
-          return (
-            <li
-              key={key}
-              className="rounded-md border border-zinc-200 dark:border-zinc-800"
-            >
+
+      {!strand ? (
+        <ul className="flex flex-col gap-2">
+          {tree.strands.map((item, index) => (
+            <li key={item.id ?? `strand-${index}`}>
               <button
                 type="button"
-                className="w-full px-3 py-2 text-left text-sm font-medium"
-                onClick={() => {
-                  setOpenStrand(open ? null : key);
-                  setOpenSub(null);
-                }}
+                className={rowClass}
+                onClick={() => chooseStrand(item)}
               >
-                {strand.title}
+                <span className="font-medium">{item.title}</span>
+                <span className="shrink-0 text-zinc-400">
+                  {item.subStrands.some((row) => row.outcomes.length > 0)
+                    ? "Continue"
+                    : isQueued(item.id ?? "")
+                      ? "Added"
+                      : "Add"}
+                </span>
               </button>
-              {open ? (
-                <ul className="border-t border-zinc-200 dark:border-zinc-800">
-                  {strand.subStrands.map((sub, subIndex) => {
-                    const subKey = sub.id ?? `${key}-sub-${subIndex}`;
-                    const subOpen = openSub === subKey;
-                    return (
-                      <li key={subKey}>
-                        <button
-                          type="button"
-                          className="w-full px-4 py-2 text-left text-sm text-zinc-700 dark:text-zinc-300"
-                          onClick={() => setOpenSub(subOpen ? null : subKey)}
-                        >
-                          {sub.title}
-                        </button>
-                        {subOpen ? (
-                          <ul className="bg-zinc-50 px-4 py-2 dark:bg-zinc-900">
-                            {sub.outcomes.map((outcome) => {
-                              const isSelected = selected?.id === outcome.id;
-                              return (
-                                <li key={outcome.id}>
-                                  <button
-                                    type="button"
-                                    className={`w-full rounded px-2 py-1.5 text-left text-sm ${
-                                      isSelected
-                                        ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-                                        : "hover:bg-zinc-200 dark:hover:bg-zinc-800"
-                                    }`}
-                                    onClick={() =>
-                                      setSelected({
-                                        id: outcome.id,
-                                        title: outcome.title,
-                                        strand: strand.title,
-                                        subStrand: sub.title,
-                                      })
-                                    }
-                                  >
-                                    {outcome.title}
-                                  </button>
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        ) : null}
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : null}
             </li>
-          );
-        })}
-      </ul>
+          ))}
+        </ul>
+      ) : null}
 
-      {selected ? (
-        <div className="flex flex-col gap-3 rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
-          <p className="text-sm">
-            <span className="font-medium">{selected.title}</span>
-            <span className="block text-zinc-500">
-              {selected.strand} → {selected.subStrand}
-            </span>
+      {strand && !sub ? (
+        <ul className="flex flex-col gap-2">
+          {strand.subStrands.map((item, index) => {
+            const leafId =
+              item.outcomes.length === 1 ? item.outcomes[0].id : item.id;
+            const added = leafId ? isQueued(leafId) : false;
+            return (
+              <li key={item.id ?? `sub-${index}`}>
+                <button
+                  type="button"
+                  className={rowClass}
+                  onClick={() => chooseSub(item, strand)}
+                >
+                  <span>{item.title}</span>
+                  <span className="shrink-0 text-zinc-400">
+                    {item.outcomes.length > 1
+                      ? "Continue"
+                      : added
+                        ? "Added"
+                        : "Add"}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+
+      {strand && sub ? (
+        <ul className="flex flex-col gap-2">
+          {sub.outcomes.map((outcome) => {
+            const added = isQueued(outcome.id);
+            return (
+              <li key={outcome.id}>
+                <button
+                  type="button"
+                  className={`${rowClass} ${added ? "border-zinc-900 dark:border-zinc-100" : ""}`}
+                  onClick={() =>
+                    toggleTopic({
+                      id: outcome.id,
+                      title: outcome.title,
+                      strand: strand.title,
+                      subStrand: sub.title,
+                    })
+                  }
+                >
+                  <span>{outcome.title}</span>
+                  <span className="shrink-0 text-zinc-400">
+                    {added ? "Added" : "Add"}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+
+      <div className="flex flex-col gap-3 rounded-md border border-zinc-200 p-4 dark:border-zinc-800">
+        <p className="text-sm font-medium">
+          {queued.length === 0
+            ? "No topics selected yet"
+            : `${queued.length} topic${queued.length === 1 ? "" : "s"} to save`}
+        </p>
+        {queued.length > 0 ? (
+          <ul className="flex flex-col gap-2">
+            {queued.map((topic) => (
+              <li
+                key={topic.id}
+                className="flex items-start justify-between gap-3 text-sm"
+              >
+                <span>
+                  <span className="font-medium">{topic.title}</span>
+                  <span className="block text-zinc-500">
+                    {topic.strand} → {topic.subStrand}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  className="shrink-0 text-zinc-500 underline"
+                  onClick={() => toggleTopic(topic)}
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        <label className="flex flex-col gap-1 text-sm">
+          Difficulty for these topics
+          <select
+            className={inputClass}
+            value={difficulty}
+            onChange={(event) => setDifficulty(event.target.value)}
+          >
+            <option value="foundational">Foundational</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="advanced">Advanced</option>
+          </select>
+        </label>
+        {error ? (
+          <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+            {error}
           </p>
-          <label className="flex flex-col gap-1 text-sm">
-            Difficulty
-            <select
-              className={inputClass}
-              value={difficulty}
-              onChange={(event) => setDifficulty(event.target.value)}
+        ) : null}
+        <div className="flex flex-wrap gap-2">
+          {onCancel ? (
+            <button
+              type="button"
+              className={secondaryButtonClass}
+              disabled={pending}
+              onClick={onCancel}
             >
-              <option value="foundational">Foundational</option>
-              <option value="intermediate">Intermediate</option>
-              <option value="advanced">Advanced</option>
-            </select>
-          </label>
-          {error ? (
-            <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-              {error}
-            </p>
+              Cancel
+            </button>
           ) : null}
           <button
             type="button"
             className={primaryButtonClass}
-            disabled={pending}
-            onClick={() => void assign()}
+            disabled={pending || queued.length === 0}
+            onClick={() => void save()}
           >
-            {pending ? "Assigning…" : assignLabel}
+            {pending
+              ? "Saving…"
+              : queued.length === 0
+                ? "Save topics"
+                : `Save ${queued.length} topic${queued.length === 1 ? "" : "s"}`}
           </button>
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }

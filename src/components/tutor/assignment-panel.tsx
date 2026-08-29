@@ -63,8 +63,8 @@ export function AssignmentPanel({
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const active = items.find((item) => item.status === "active") ?? null;
-  const history = items.filter((item) => item.id !== active?.id);
+  const actives = items.filter((item) => item.status === "active");
+  const history = items.filter((item) => item.status !== "active");
 
   async function reload() {
     const response = await fetch(`/api/students/${studentId}/assignments`);
@@ -78,10 +78,7 @@ export function AssignmentPanel({
     router.refresh();
   }
 
-  async function patch(
-    assignmentId: string,
-    body: Record<string, string>,
-  ) {
+  async function patch(assignmentId: string, body: Record<string, string>) {
     setError(null);
     setPendingId(assignmentId);
     try {
@@ -106,75 +103,85 @@ export function AssignmentPanel({
   return (
     <section id="assign" className="flex flex-col gap-4">
       <div>
-        <h2 className="text-lg font-medium">Practice topic</h2>
+        <h2 className="text-lg font-medium">Practice topics</h2>
         <p className="text-sm text-zinc-500">
-          Grade {grade} Mathematics. Assigned text is stored here so it still
-          shows if curriculum is later unavailable.
+          Grade {grade} Mathematics. A student can have more than one active
+          topic. Chat practice uses the most recently saved one.
         </p>
       </div>
 
-      {active ? (
-        <article className="rounded-md border border-zinc-200 p-4 dark:border-zinc-800">
-          <p className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
-            {statusLabel(active.status)}
-          </p>
-          <p className="mt-1 font-medium">{active.learning_outcome}</p>
-          <p className="text-sm text-zinc-500">
-            {active.strand} → {active.sub_strand}
-          </p>
-          {active.assigned_at ? (
-            <p className="mt-1 text-xs text-zinc-400">
-              Assigned {formatAssignedAt(active.assigned_at)}
-            </p>
-          ) : null}
+      {actives.length > 0 ? (
+        <ul className="flex flex-col gap-3">
+          {actives.map((active) => (
+            <li
+              key={active.id}
+              className="rounded-md border border-zinc-200 p-4 dark:border-zinc-800"
+            >
+              <p className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
+                {statusLabel(active.status)}
+              </p>
+              <p className="mt-1 font-medium">{active.learning_outcome}</p>
+              <p className="text-sm text-zinc-500">
+                {active.strand} → {active.sub_strand}
+              </p>
+              {active.assigned_at ? (
+                <p className="mt-1 text-xs text-zinc-400">
+                  Assigned {formatAssignedAt(active.assigned_at)}
+                </p>
+              ) : null}
 
-          <label className="mt-3 flex max-w-xs flex-col gap-1 text-sm">
-            Difficulty
-            <select
-              className={inputClass}
-              value={active.difficulty}
-              disabled={pendingId === active.id}
-              onChange={(event) => {
-                void patch(active.id, { difficulty: event.target.value });
-              }}
-            >
-              <option value="foundational">Foundational</option>
-              <option value="intermediate">Intermediate</option>
-              <option value="advanced">Advanced</option>
-            </select>
-          </label>
+              <label className="mt-3 flex max-w-xs flex-col gap-1 text-sm">
+                Difficulty
+                <select
+                  className={inputClass}
+                  value={active.difficulty}
+                  disabled={pendingId === active.id}
+                  onChange={(event) => {
+                    void patch(active.id, { difficulty: event.target.value });
+                  }}
+                >
+                  <option value="foundational">Foundational</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+              </label>
 
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              className={secondaryButtonClass}
-              disabled={pendingId === active.id}
-              onClick={() => void patch(active.id, { status: "paused" })}
-            >
-              Pause
-            </button>
-            <button
-              type="button"
-              className={secondaryButtonClass}
-              disabled={pendingId === active.id}
-              onClick={() => void patch(active.id, { status: "completed" })}
-            >
-              Mark complete
-            </button>
-            <button
-              type="button"
-              className={primaryButtonClass}
-              onClick={() => setBrowsing((open) => !open)}
-            >
-              {browsing ? "Hide topics" : "Change topic"}
-            </button>
-          </div>
-        </article>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className={secondaryButtonClass}
+                  disabled={pendingId === active.id}
+                  onClick={() => void patch(active.id, { status: "paused" })}
+                >
+                  Pause
+                </button>
+                <button
+                  type="button"
+                  className={secondaryButtonClass}
+                  disabled={pendingId === active.id}
+                  onClick={() => void patch(active.id, { status: "completed" })}
+                >
+                  Mark complete
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
       ) : (
         <p className="text-sm text-zinc-500">
-          No active topic. Pick a learning outcome for {studentName}.
+          No active topics. Pick one or more learning outcomes for {studentName}.
         </p>
       )}
+
+      <div>
+        <button
+          type="button"
+          className={primaryButtonClass}
+          onClick={() => setBrowsing((open) => !open)}
+        >
+          {browsing ? "Hide picker" : "Add topics"}
+        </button>
+      </div>
 
       {error ? (
         <p className="text-sm text-red-600 dark:text-red-400" role="alert">
@@ -187,21 +194,13 @@ export function AssignmentPanel({
           key={grade}
           grade={grade}
           studentId={studentId}
-          assignLabel={active ? "Switch to this topic" : "Assign topic"}
+          onCancel={() => setBrowsing(false)}
           onAssigned={() => {
             setBrowsing(false);
             void reload();
           }}
         />
-      ) : active ? null : (
-        <button
-          type="button"
-          className={primaryButtonClass}
-          onClick={() => setBrowsing(true)}
-        >
-          Assign a topic
-        </button>
-      )}
+      ) : null}
 
       {history.length > 0 ? (
         <div className="flex flex-col gap-2">

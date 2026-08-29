@@ -185,8 +185,11 @@ export function OnboardingFlow({
       {screen === "assignment" && student ? (
         <div className="flex flex-col gap-3">
           <h2 className="text-lg font-medium">
-            Assign a topic for {student.first_name}
+            Assign topics for {student.first_name}
           </h2>
+          <p className="text-sm text-zinc-500">
+            Add one or more CBC topics, then save.
+          </p>
           <CurriculumBrowser
             grade={student.grade}
             studentId={student.id}

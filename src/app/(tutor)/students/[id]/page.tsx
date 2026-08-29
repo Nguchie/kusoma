@@ -61,14 +61,14 @@ export default async function StudentDetailPage({
         <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
           {assignment ? (
             <>
-              Current topic:{" "}
+              Latest topic:{" "}
               <span className="font-medium">{assignment.learning_outcome}</span>
               <span className="block text-zinc-500">
                 {assignment.strand} → {assignment.sub_strand}
               </span>
             </>
           ) : (
-            "No active topic"
+            "No active topics"
           )}
         </p>
         <p className="mt-1 text-sm text-zinc-500">

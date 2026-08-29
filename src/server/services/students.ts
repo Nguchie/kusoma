@@ -184,6 +184,7 @@ export async function getStudentForTutor(tutorId: string, studentId: string) {
         eq(assignments.status, "active"),
       ),
     )
+    .orderBy(desc(assignments.assignedAt))
     .limit(1);
 
   const [latest] = await db

@@ -147,16 +147,7 @@ export async function createAssignment(input: {
   }
 
   const node = await getNode(input.cbcNodeId);
-  if (!node.ok) {
-    return {
-      ok: false,
-      error:
-        "Curriculum data is temporarily unavailable — try again in a moment",
-      status: node.error.kind === "timeout" ? 504 : 502,
-    };
-  }
-
-  const fromNode = parseCbcNodeDisplay(node.data);
+  const fromNode = node.ok ? parseCbcNodeDisplay(node.data) : null;
   const display = fromNode
     ? {
         strand: clipDisplay(fromNode.strand),
@@ -167,21 +158,41 @@ export async function createAssignment(input: {
   if (!display) {
     return {
       ok: false,
-      error: "Could not read that topic from the curriculum.",
-      status: 502,
+      error: node.ok
+        ? "Could not read that topic from the curriculum."
+        : "Curriculum data is temporarily unavailable — try again in a moment",
+      status: node.ok ? 502 : node.error.kind === "timeout" ? 504 : 502,
     };
   }
 
   const created = await db.transaction(async (tx) => {
-    await tx
-      .update(assignments)
-      .set({ status: "paused" })
+    const [existing] = await tx
+      .select()
+      .from(assignments)
       .where(
         and(
           eq(assignments.studentId, input.studentId),
-          eq(assignments.status, "active"),
+          eq(assignments.cbcNodeId, input.cbcNodeId),
         ),
-      );
+      )
+      .orderBy(desc(assignments.assignedAt))
+      .limit(1);
+
+    if (existing) {
+      const [row] = await tx
+        .update(assignments)
+        .set({
+          status: "active",
+          difficulty: input.difficulty,
+          strand: display.strand,
+          subStrand: display.subStrand,
+          learningOutcome: display.learningOutcome,
+          completedAt: null,
+        })
+        .where(eq(assignments.id, existing.id))
+        .returning();
+      return row ?? existing;
+    }
 
     const [row] = await tx
       .insert(assignments)
@@ -203,6 +214,35 @@ export async function createAssignment(input: {
     return { ok: false, error: "Could not create assignment.", status: 500 };
   }
   return { ok: true, assignment: toAssignmentJson(created) };
+}
+
+export async function createAssignments(
+  input: {
+    tutorId: string;
+    studentId: string;
+    topics: Array<{
+      cbcNodeId: string;
+      difficulty: AssignmentDifficulty;
+      strand?: string;
+      subStrand?: string;
+      learningOutcome?: string;
+    }>;
+  },
+): Promise<
+  | { ok: true; assignments: AssignmentJson[] }
+  | { ok: false; error: string; status: number }
+> {
+  const created: AssignmentJson[] = [];
+  for (const topic of input.topics) {
+    const result = await createAssignment({
+      tutorId: input.tutorId,
+      studentId: input.studentId,
+      ...topic,
+    });
+    if (!result.ok) return result;
+    created.push(result.assignment);
+  }
+  return { ok: true, assignments: created };
 }
 
 export async function updateAssignment(input: {
@@ -242,26 +282,11 @@ export async function updateAssignment(input: {
     return { ok: true, assignment: toAssignmentJson(existing.assignment) };
   }
 
-  const updated = await db.transaction(async (tx) => {
-    if (input.status === "active") {
-      await tx
-        .update(assignments)
-        .set({ status: "paused" })
-        .where(
-          and(
-            eq(assignments.studentId, existing.studentId),
-            eq(assignments.status, "active"),
-          ),
-        );
-    }
-
-    const [row] = await tx
-      .update(assignments)
-      .set(patch)
-      .where(eq(assignments.id, input.assignmentId))
-      .returning();
-    return row ?? null;
-  });
+  const [updated] = await db
+    .update(assignments)
+    .set(patch)
+    .where(eq(assignments.id, input.assignmentId))
+    .returning();
 
   if (!updated) {
     return { ok: false, error: "Could not update assignment.", status: 500 };
