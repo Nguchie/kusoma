@@ -1,4 +1,9 @@
-export { CLAUDE_MODEL, getAnthropicClient } from "./claude";
+export {
+  CLAUDE_MODEL,
+  CLAUDE_NOT_CONFIGURED,
+  claudeModel,
+  getAnthropicClient,
+} from "./claude";
 export { generatePracticeProblem } from "./generate-problem";
 export {
   FALLBACK_STUDENT_MESSAGE,

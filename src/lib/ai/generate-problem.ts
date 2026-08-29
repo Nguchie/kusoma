@@ -2,13 +2,12 @@ import "server-only";
 
 import type { AssignmentDifficulty } from "@/lib/cbc/types";
 import {
-  CLAUDE_MODEL,
+  CLAUDE_NOT_CONFIGURED,
+  claudeModel,
   getAnthropicClient,
   parseJsonObject,
   textFromClaudeMessage,
 } from "@/lib/ai/claude";
-
-export { CLAUDE_MODEL };
 
 export type GeneratedPracticeProblem = {
   problemText: string;
@@ -26,7 +25,7 @@ export async function generatePracticeProblem(input: {
 > {
   const client = getAnthropicClient();
   if (!client) {
-    return { ok: false, error: "ANTHROPIC_API_KEY is not set." };
+    return { ok: false, error: CLAUDE_NOT_CONFIGURED };
   }
 
   const user = `Generate one Grade ${input.grade} mathematics practice problem for Kenya's CBC curriculum.
@@ -40,7 +39,7 @@ Respond with valid JSON only:
 
   try {
     const message = await client.messages.create({
-      model: CLAUDE_MODEL,
+      model: claudeModel(),
       max_tokens: 600,
       messages: [{ role: "user", content: user }],
     });

@@ -8,7 +8,12 @@ declare global {
       SUPABASE_SERVICE_ROLE_KEY?: string;
       DATABASE_URL?: string;
       DATABASE_DIRECT_URL?: string;
-      ANTHROPIC_API_KEY?: string;
+      AWS_ACCESS_KEY_ID?: string;
+      AWS_SECRET_ACCESS_KEY?: string;
+      AWS_REGION?: string;
+      AWS_SESSION_TOKEN?: string;
+      AWS_BEARER_TOKEN_BEDROCK?: string;
+      CLAUDE_MODEL?: string;
       CBC_API_URL?: string;
       CBC_API_KEY?: string;
       REDIS_URL?: string;

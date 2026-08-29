@@ -1,7 +1,8 @@
 import "server-only";
 
 import {
-  CLAUDE_MODEL,
+  CLAUDE_NOT_CONFIGURED,
+  claudeModel,
   getAnthropicClient,
   parseJsonObject,
   textFromClaudeMessage,
@@ -68,7 +69,7 @@ async function callHomeworkClaude(
 
   try {
     const message = await client.messages.create({
-      model: CLAUDE_MODEL,
+      model: claudeModel(),
       max_tokens: 800,
       system: homeworkHelpSystemPrompt(ctx),
       messages: [{ role: "user", content: user }],
@@ -100,7 +101,7 @@ export async function prepareHomeworkHelp(
   }
 
   if (!getAnthropicClient()) {
-    return { ok: false, error: "ANTHROPIC_API_KEY is not set." };
+    return { ok: false, error: CLAUDE_NOT_CONFIGURED };
   }
 
   const curriculum = await searchCurriculum({

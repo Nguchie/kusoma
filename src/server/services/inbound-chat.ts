@@ -40,7 +40,7 @@ function isStartCommand(body: string): boolean {
 
 function errorStatus(error: string): number {
   if (error.includes("not found")) return 404;
-  if (error.includes("ANTHROPIC_API_KEY")) return 503;
+  if (error.includes("Claude is not configured")) return 503;
   if (
     error.includes("Could not") ||
     error.includes("Send homework") ||

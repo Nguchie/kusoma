@@ -16,7 +16,7 @@
     "worker:once": "tsx --env-file=.env.local src/worker/index.ts --once"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.122.0",
+    "@anthropic-ai/bedrock-sdk": "^0.33.3",
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.112.4",
     "bullmq": "^6.3.1",

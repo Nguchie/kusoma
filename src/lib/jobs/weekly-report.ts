@@ -1,5 +1,6 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { and, eq } from "drizzle-orm";
+
+import { claudeModel, createClaudeClient } from "@/lib/ai/claude-client";
 
 import { weeklyReportPrompt } from "@/lib/ai/prompts";
 import type { Db } from "@/lib/db/client";
@@ -10,8 +11,6 @@ import {
   tutors,
 } from "@/lib/db/schema";
 import { addNairobiDays, nairobiDateKey } from "@/lib/jobs/eat";
-
-const CLAUDE_MODEL = "claude-sonnet-4-6";
 
 export function reportPeriodFor(now = new Date()): {
   start: string;
@@ -42,15 +41,12 @@ function fallbackBody(input: {
   return `${input.firstName} worked on ${bits.join("; ")} this week. Please review the full notes with their tutor.`;
 }
 
-async function draftWithClaude(
-  apiKey: string | undefined,
-  prompt: string,
-): Promise<string | null> {
-  if (!apiKey) return null;
+async function draftWithClaude(prompt: string): Promise<string | null> {
+  const client = createClaudeClient();
+  if (!client) return null;
   try {
-    const client = new Anthropic({ apiKey });
     const message = await client.messages.create({
-      model: CLAUDE_MODEL,
+      model: claudeModel(),
       max_tokens: 400,
       messages: [{ role: "user", content: prompt }],
     });
@@ -67,7 +63,7 @@ async function draftWithClaude(
 
 export async function runWeeklyReport(
   db: Db,
-  options?: { anthropicApiKey?: string; now?: Date },
+  options?: { now?: Date },
 ): Promise<{ created: number; skipped: number }> {
   const now = options?.now ?? new Date();
   const period = reportPeriodFor(now);
@@ -128,7 +124,7 @@ export async function runWeeklyReport(
       periodEnd: period.end,
       topics,
     });
-    const drafted = await draftWithClaude(options?.anthropicApiKey, prompt);
+    const drafted = await draftWithClaude(prompt);
     const reportBody =
       drafted ?? fallbackBody({ firstName: student.firstName, topics });
 

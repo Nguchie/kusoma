@@ -53,6 +53,14 @@ function collectMissing(
   }
 }
 
+/** `next build` evaluates API routes; it must not require runtime secrets. */
+function isNextProductionBuild(): boolean {
+  return (
+    process.env.NEXT_PHASE === "phase-production-build" ||
+    process.env.npm_lifecycle_event === "build"
+  );
+}
+
 function throwIfMissing(missing: MissingVar[]): void {
   if (missing.length === 0) return;
 
@@ -60,9 +68,12 @@ function throwIfMissing(missing: MissingVar[]): void {
     .map((item) => `  - ${item.name} (required from Phase ${item.phase})`)
     .join("\n");
 
+  const hint = isNextProductionBuild()
+    ? "Set these on the host (Render → Environment) and redeploy. NEXT_PUBLIC_* are inlined at build time."
+    : "Copy .env.example to .env.local and fill values (Guide Step 1.3 / 1.4).";
+
   throw new Error(
-    `[kusoma] Missing environment variables:\n${lines}\n` +
-      `Copy .env.example to .env.local and fill values (Guide Step 1.3 / 1.4).`,
+    `[kusoma] Missing environment variables:\n${lines}\n${hint}`,
   );
 }
 
@@ -74,17 +85,26 @@ const PHASE_1_REQUIRED = [
 ] as const;
 
 const PHASE_2_REQUIRED = [
-  "ANTHROPIC_API_KEY",
+  "AWS_ACCESS_KEY_ID",
+  "AWS_SECRET_ACCESS_KEY",
+  "AWS_REGION",
   "CBC_API_URL",
   "CBC_API_KEY",
   "CHAT_SESSION_SECRET",
   "REDIS_URL",
 ] as const;
 
+const BUILD_PLACEHOLDER_URL = "https://build.invalid";
+const BUILD_PLACEHOLDER_KEY = "build-placeholder";
+const BUILD_PLACEHOLDER_DATABASE = "postgres://build:build@127.0.0.1:5432/build";
+
 function assertPhase(phase: Phase): void {
   const missing: MissingVar[] = [];
-  collectMissing(PHASE_1_REQUIRED, 1, missing);
-  if (phase >= 2) {
+  const required = isNextProductionBuild()
+    ? (["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY"] as const)
+    : PHASE_1_REQUIRED;
+  collectMissing(required, 1, missing);
+  if (phase >= 2 && !isNextProductionBuild()) {
     collectMissing(PHASE_2_REQUIRED, 2, missing);
   }
   throwIfMissing(missing);
@@ -93,9 +113,11 @@ function assertPhase(phase: Phase): void {
 function loadEnv() {
   assertPhase(KUSOMA_PHASE);
 
+  const building = isNextProductionBuild();
   const supabaseUrl = parseUrl(
     "NEXT_PUBLIC_SUPABASE_URL",
-    read("NEXT_PUBLIC_SUPABASE_URL")!,
+    read("NEXT_PUBLIC_SUPABASE_URL") ??
+      (building ? BUILD_PLACEHOLDER_URL : ""),
   );
   const appUrl = parseUrl("APP_URL", read("APP_URL") ?? "http://localhost:3000");
 
@@ -115,14 +137,26 @@ function loadEnv() {
     APP_URL: appUrl,
 
     NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: read("NEXT_PUBLIC_SUPABASE_ANON_KEY")!,
-    SUPABASE_SERVICE_ROLE_KEY: read("SUPABASE_SERVICE_ROLE_KEY")!,
-    DATABASE_URL: parseUrl("DATABASE_URL", read("DATABASE_URL")!),
+    NEXT_PUBLIC_SUPABASE_ANON_KEY:
+      read("NEXT_PUBLIC_SUPABASE_ANON_KEY") ??
+      (building ? BUILD_PLACEHOLDER_KEY : ""),
+    SUPABASE_SERVICE_ROLE_KEY:
+      read("SUPABASE_SERVICE_ROLE_KEY") ??
+      (building ? BUILD_PLACEHOLDER_KEY : ""),
+    DATABASE_URL: parseUrl(
+      "DATABASE_URL",
+      read("DATABASE_URL") ?? (building ? BUILD_PLACEHOLDER_DATABASE : ""),
+    ),
     DATABASE_DIRECT_URL: read("DATABASE_DIRECT_URL")
       ? parseUrl("DATABASE_DIRECT_URL", read("DATABASE_DIRECT_URL")!)
       : undefined,
 
-    ANTHROPIC_API_KEY: read("ANTHROPIC_API_KEY"),
+    AWS_ACCESS_KEY_ID: read("AWS_ACCESS_KEY_ID"),
+    AWS_SECRET_ACCESS_KEY: read("AWS_SECRET_ACCESS_KEY"),
+    AWS_REGION: read("AWS_REGION"),
+    AWS_SESSION_TOKEN: read("AWS_SESSION_TOKEN"),
+    AWS_BEARER_TOKEN_BEDROCK: read("AWS_BEARER_TOKEN_BEDROCK"),
+    CLAUDE_MODEL: read("CLAUDE_MODEL"),
     CBC_API_URL: cbcUrl ? parseUrl("CBC_API_URL", cbcUrl) : undefined,
     CBC_API_KEY: read("CBC_API_KEY"),
     REDIS_URL: redisUrl ? parseUrl("REDIS_URL", redisUrl) : undefined,

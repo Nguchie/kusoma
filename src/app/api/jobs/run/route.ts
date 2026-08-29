@@ -24,9 +24,7 @@ export async function POST(request: Request) {
   if (job === "weekly_report") {
     return Response.json({
       job,
-      result: await runWeeklyReport(db, {
-        anthropicApiKey: env.ANTHROPIC_API_KEY,
-      }),
+      result: await runWeeklyReport(db),
     });
   }
   if (job === "payment_reminder") {

@@ -9,7 +9,6 @@ export function workerEnv() {
   return {
     REDIS_URL: redisUrl,
     DATABASE_URL: databaseUrl,
-    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY?.trim(),
     NODE_ENV: process.env.NODE_ENV ?? "development",
   };
 }

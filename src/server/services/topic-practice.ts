@@ -3,7 +3,8 @@ import "server-only";
 import { and, desc, eq, isNull } from "drizzle-orm";
 
 import {
-  CLAUDE_MODEL,
+  CLAUDE_NOT_CONFIGURED,
+  claudeModel,
   getAnthropicClient,
   parseJsonObject,
   textFromClaudeMessage,
@@ -108,7 +109,7 @@ async function callPracticeClaude(
 
   try {
     const message = await client.messages.create({
-      model: CLAUDE_MODEL,
+      model: claudeModel(),
       max_tokens: 800,
       system: topicPracticeSystemPrompt(ctx),
       messages: [{ role: "user", content: user }],
@@ -216,7 +217,7 @@ export async function evaluateTopicPractice(input: {
   if (!ctx) return { ok: false, error: "Student not found." };
 
   if (!getAnthropicClient()) {
-    return { ok: false, error: "ANTHROPIC_API_KEY is not set." };
+    return { ok: false, error: CLAUDE_NOT_CONFIGURED };
   }
 
   const topic = assignmentTopic(input.assignment);

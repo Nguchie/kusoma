@@ -20,7 +20,7 @@ export async function startWorker(argv: string[]) {
   const onceJob = parseOnceJob(argv);
 
   if (onceJob) {
-    const result = await runNamedJob(db, onceJob, env.ANTHROPIC_API_KEY);
+    const result = await runNamedJob(db, onceJob);
     console.log(`[kusoma] ${onceJob}`, result);
     await client.end({ timeout: 5 });
     return;
@@ -57,7 +57,7 @@ export async function startWorker(argv: string[]) {
   );
   const reportWorker = new Worker(
     QUEUE_WEEKLY_REPORT,
-    async () => runWeeklyReport(db, { anthropicApiKey: env.ANTHROPIC_API_KEY }),
+    async () => runWeeklyReport(db),
     { connection },
   );
   const paymentWorker = new Worker(
@@ -110,10 +110,9 @@ export async function startWorker(argv: string[]) {
 async function runNamedJob(
   db: ReturnType<typeof createDb>["db"],
   name: NonNullable<ReturnType<typeof parseOnceJob>>,
-  anthropicApiKey: string | undefined,
 ) {
   if (name === "weekly_report") {
-    return runWeeklyReport(db, { anthropicApiKey });
+    return runWeeklyReport(db);
   }
   if (name === "payment_reminder") {
     return runPaymentReminder(db);
