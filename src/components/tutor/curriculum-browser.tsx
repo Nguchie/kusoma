@@ -138,39 +138,19 @@ export function CurriculumBrowser({
   }
 
   function chooseStrand(next: CurriculumStrand) {
-    const drillable = next.subStrands.filter((row) => row.outcomes.length > 0);
-    if (drillable.length === 1) {
-      setStrand(next);
-      setSub(drillable[0]);
-      return;
-    }
-    if (drillable.length === 0 && next.id) {
-      toggleTopic({
-        id: next.id,
-        title: next.title,
-        strand: next.title,
-        subStrand: next.title,
-      });
-      return;
-    }
     setSub(null);
     setStrand(next);
   }
 
   function chooseSub(next: CurriculumSubStrand, parent: CurriculumStrand) {
-    if (next.outcomes.length === 0 && next.id) {
+    if (next.outcomes.length > 0) {
+      setSub(next);
+      return;
+    }
+    if (next.id) {
       toggleTopic({
         id: next.id,
         title: next.title,
-        strand: parent.title,
-        subStrand: next.title,
-      });
-      return;
-    }
-    if (next.outcomes.length === 1) {
-      toggleTopic({
-        id: next.outcomes[0].id,
-        title: next.outcomes[0].title,
         strand: parent.title,
         subStrand: next.title,
       });
@@ -281,10 +261,27 @@ export function CurriculumBrowser({
                 onClick={() => chooseStrand(item)}
               >
                 <span className="font-medium">{item.title}</span>
+                <span className="shrink-0 text-zinc-400">Continue</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {strand && !sub ? (
+        <ul className="flex flex-col gap-2">
+          {strand.subStrands.map((item, index) => (
+            <li key={item.id ?? `sub-${index}`}>
+              <button
+                type="button"
+                className={rowClass}
+                onClick={() => chooseSub(item, strand)}
+              >
+                <span>{item.title}</span>
                 <span className="shrink-0 text-zinc-400">
-                  {item.subStrands.some((row) => row.outcomes.length > 0)
+                  {item.outcomes.length > 0
                     ? "Continue"
-                    : isQueued(item.id ?? "")
+                    : item.id && isQueued(item.id)
                       ? "Added"
                       : "Add"}
                 </span>
@@ -294,61 +291,63 @@ export function CurriculumBrowser({
         </ul>
       ) : null}
 
-      {strand && !sub ? (
-        <ul className="flex flex-col gap-2">
-          {strand.subStrands.map((item, index) => {
-            const leafId =
-              item.outcomes.length === 1 ? item.outcomes[0].id : item.id;
-            const added = leafId ? isQueued(leafId) : false;
-            return (
-              <li key={item.id ?? `sub-${index}`}>
+      {strand && sub ? (
+        <div className="flex flex-col gap-2">
+          {sub.outcomes.length === 0 ? (
+            <div className="flex flex-col gap-2">
+              <p className="text-sm text-zinc-500">
+                No learning outcomes under this heading. You can still add the
+                heading itself if it has an id.
+              </p>
+              {sub.id ? (
                 <button
                   type="button"
                   className={rowClass}
-                  onClick={() => chooseSub(item, strand)}
-                >
-                  <span>{item.title}</span>
-                  <span className="shrink-0 text-zinc-400">
-                    {item.outcomes.length > 1
-                      ? "Continue"
-                      : added
-                        ? "Added"
-                        : "Add"}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      ) : null}
-
-      {strand && sub ? (
-        <ul className="flex flex-col gap-2">
-          {sub.outcomes.map((outcome) => {
-            const added = isQueued(outcome.id);
-            return (
-              <li key={outcome.id}>
-                <button
-                  type="button"
-                  className={`${rowClass} ${added ? "border-zinc-900 dark:border-zinc-100" : ""}`}
                   onClick={() =>
                     toggleTopic({
-                      id: outcome.id,
-                      title: outcome.title,
+                      id: sub.id as string,
+                      title: sub.title,
                       strand: strand.title,
                       subStrand: sub.title,
                     })
                   }
                 >
-                  <span>{outcome.title}</span>
+                  <span>{sub.title}</span>
                   <span className="shrink-0 text-zinc-400">
-                    {added ? "Added" : "Add"}
+                    {isQueued(sub.id) ? "Added" : "Add"}
                   </span>
                 </button>
-              </li>
-            );
-          })}
-        </ul>
+              ) : null}
+            </div>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {sub.outcomes.map((outcome) => {
+                const added = isQueued(outcome.id);
+                return (
+                  <li key={outcome.id}>
+                    <button
+                      type="button"
+                      className={`${rowClass} ${added ? "border-zinc-900 dark:border-zinc-100" : ""}`}
+                      onClick={() =>
+                        toggleTopic({
+                          id: outcome.id,
+                          title: outcome.title,
+                          strand: strand.title,
+                          subStrand: sub.title,
+                        })
+                      }
+                    >
+                      <span>{outcome.title}</span>
+                      <span className="shrink-0 font-medium text-zinc-900 dark:text-zinc-100">
+                        {added ? "Added" : "Add"}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
       ) : null}
 
       <div className="flex flex-col gap-3 rounded-md border border-zinc-200 p-4 dark:border-zinc-800">

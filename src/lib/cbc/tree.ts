@@ -74,7 +74,10 @@ function idOf(record: Record<string, unknown>): string | null {
   const direct =
     asString(record.id) ??
     asString(record.node_id) ??
-    asString(record.nodeId);
+    asString(record.nodeId) ??
+    asString(record.uuid) ??
+    asString(record.cbc_node_id) ??
+    asString(record.cbcNodeId);
   if (direct) return direct;
   if (typeof record.id === "number" && Number.isFinite(record.id)) {
     return String(record.id);
@@ -82,22 +85,34 @@ function idOf(record: Record<string, unknown>): string | null {
   return null;
 }
 
+const NEST_KEYS = [
+  "learning_outcomes",
+  "learningOutcomes",
+  "specific_learning_outcomes",
+  "specificLearningOutcomes",
+  "outcomes",
+  "topics",
+  "sub_topics",
+  "subTopics",
+  "indicators",
+  "children",
+  "nodes",
+  "items",
+] as const;
+
 function parseOutcomes(raw: unknown[]): CurriculumOutcome[] {
   const outcomes: CurriculumOutcome[] = [];
   for (const item of raw) {
     const record = asRecord(item);
     if (!record) continue;
     const nested = asRecord(record.node) ?? record;
-    const nestedChildren = firstArray(nested, [
-      "learning_outcomes",
-      "learningOutcomes",
-      "outcomes",
-      "children",
-      "nodes",
-    ]);
+    const nestedChildren = firstArray(nested, [...NEST_KEYS]);
     if (nestedChildren.length > 0) {
-      outcomes.push(...parseOutcomes(nestedChildren));
-      continue;
+      const inner = parseOutcomes(nestedChildren);
+      if (inner.length > 0) {
+        outcomes.push(...inner);
+        continue;
+      }
     }
     const id = idOf(nested) ?? idOf(record);
     const title = titleOf(nested, ["learning_outcome", "learningOutcome"]);
@@ -120,13 +135,7 @@ function parseSubStrands(raw: unknown[]): CurriculumSubStrand[] {
     const nested = asRecord(record.node) ?? record;
     const title = titleOf(nested, ["sub_strand", "subStrand"]);
     const outcomes = parseOutcomes(
-      firstArray(nested, [
-        "learning_outcomes",
-        "learningOutcomes",
-        "outcomes",
-        "children",
-        "nodes",
-      ]),
+      firstArray(nested, [...NEST_KEYS, "sub_strands", "subStrands"]),
     );
     if (!title && outcomes.length === 0) continue;
     subs.push({
