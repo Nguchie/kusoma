@@ -44,6 +44,7 @@ export function parseCurriculumSearchHits(
     const learningOutcome =
       asString(nested.learningOutcome) ??
       asString(nested.learning_outcome) ??
+      asString(nested.outcome) ??
       asString(nested.title);
     if (!strand || !subStrand || !learningOutcome) continue;
     nodes.push({

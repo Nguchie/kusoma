@@ -60,6 +60,7 @@ function titleOf(
     "label",
     "learning_outcome",
     "learningOutcome",
+    "outcome",
     "sub_strand",
     "subStrand",
     "strand",
@@ -115,7 +116,11 @@ function parseOutcomes(raw: unknown[]): CurriculumOutcome[] {
       }
     }
     const id = idOf(nested) ?? idOf(record);
-    const title = titleOf(nested, ["learning_outcome", "learningOutcome"]);
+    const title = titleOf(nested, [
+      "learning_outcome",
+      "learningOutcome",
+      "outcome",
+    ]);
     if (!id || !title) continue;
     outcomes.push({
       id,
@@ -226,6 +231,7 @@ export function parseCbcNodeDisplay(data: unknown): {
   const learningOutcome =
     asString(nested.learning_outcome) ??
     asString(nested.learningOutcome) ??
+    asString(nested.outcome) ??
     asString(nested.title) ??
     asString(nested.name);
 
