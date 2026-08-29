@@ -26,11 +26,13 @@ export function DashboardCards({ summary }: { summary: DashboardSummary }) {
       label: "Pending reports",
       value: summary.pending_reports,
       hint: "Drafts waiting for review",
+      href: "/reports",
     },
     {
       label: "Overdue payments",
       value: summary.overdue_payments,
       hint: "Pending this month",
+      href: "/payments",
     },
   ];
 

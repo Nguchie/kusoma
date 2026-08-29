@@ -141,3 +141,42 @@ Respond with valid JSON:
   "evaluation_data": { "is_correct": true|false, "error_type": "...", "error_detail": "..." }
 }`;
 }
+
+export function weeklyReportPrompt(input: {
+  firstName: string;
+  grade: number;
+  tutorName: string;
+  periodStart: string;
+  periodEnd: string;
+  topics: Array<{
+    strand: string;
+    subStrand: string;
+    learningOutcome: string;
+    correctCount: number;
+    totalProblems: number;
+  }>;
+}): string {
+  const lines = input.topics
+    .map((topic) => {
+      const pct =
+        topic.totalProblems > 0
+          ? Math.round((topic.correctCount / topic.totalProblems) * 100)
+          : 0;
+      return `- ${topic.strand} > ${topic.subStrand}: ${topic.learningOutcome} (${topic.correctCount}/${topic.totalProblems}, ${pct}%)`;
+    })
+    .join("\n");
+
+  return `You write a short parent-facing weekly summary for a Kenyan CBC learner.
+Write in plain language. No jargon. 3–6 sentences.
+Mention topics, how they did (accuracy), and effort. Do not give a full solution to any problem.
+Address the parent, not the child. English is fine; a light Kenyan tone is welcome.
+
+Student: ${input.firstName}, Grade ${input.grade}
+Tutor: ${input.tutorName}
+Period: ${input.periodStart} to ${input.periodEnd}
+
+Activity:
+${lines || "- No scored attempts this week."}
+
+Return plain text only, no markdown headings.`;
+}

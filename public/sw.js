@@ -1,24 +1,7 @@
-const CACHE = "kusoma-tutor-shell-v1";
+const CACHE = "kusoma-tutor-shell-v2";
 
-/** Precache only unauthenticated shell URLs. Auth pages 307 and would fail install. */
-const PRECACHE = [
-  "/",
-  "/login",
-  "/signup",
-  "/offline",
-  "/icons/icon-192.png",
-  "/icons/icon-512.png",
-];
-
-const TUTOR_SHELL = [
-  "/",
-  "/dashboard",
-  "/students",
-  "/login",
-  "/signup",
-  "/onboarding",
-  "/offline",
-];
+/** Offline fallback + icons only. Do not precache App Router HTML (breaks RSC hydration). */
+const PRECACHE = ["/offline", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -50,32 +33,53 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith("/api/")) return;
   if (url.pathname === "/sw.js") return;
+  if (isNextDataRequest(request, url)) return;
 
-  event.respondWith(handleGet(request, url.pathname));
+  if (request.mode === "navigate") {
+    event.respondWith(networkThenOffline(request));
+    return;
+  }
+
+  if (
+    url.pathname.startsWith("/icons/") ||
+    url.pathname.startsWith("/_next/static/")
+  ) {
+    event.respondWith(cacheFirst(request));
+  }
 });
 
-async function handleGet(request, pathname) {
+function isNextDataRequest(request, url) {
+  if (url.searchParams.has("_rsc")) return true;
+  if (request.headers.get("RSC") === "1") return true;
+  if (request.headers.get("Next-Router-State-Tree")) return true;
+  if (
+    url.pathname.startsWith("/_next/") &&
+    !url.pathname.startsWith("/_next/static/")
+  ) {
+    return true;
+  }
+  return false;
+}
+
+async function networkThenOffline(request) {
   try {
-    const response = await fetch(request);
-    if (response.ok && shouldCachePath(pathname)) {
-      const cache = await caches.open(CACHE);
-      await cache.put(request, response.clone());
-    }
-    return response;
+    return await fetch(request);
   } catch {
-    const cached = await caches.match(request);
-    if (cached) return cached;
-    if (request.mode === "navigate") {
-      const offline = await caches.match("/offline");
-      if (offline) return offline;
-    }
-    return new Response("Offline", { status: 503, statusText: "Offline" });
+    const offline = await caches.match("/offline");
+    return (
+      offline ??
+      new Response("Offline", { status: 503, statusText: "Offline" })
+    );
   }
 }
 
-function shouldCachePath(pathname) {
-  if (TUTOR_SHELL.includes(pathname)) return true;
-  if (pathname.startsWith("/icons/")) return true;
-  if (pathname.startsWith("/_next/static/")) return true;
-  return false;
+async function cacheFirst(request) {
+  const cached = await caches.match(request);
+  if (cached) return cached;
+  const response = await fetch(request);
+  if (response.ok) {
+    const cache = await caches.open(CACHE);
+    await cache.put(request, response.clone());
+  }
+  return response;
 }

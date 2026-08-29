@@ -1,27 +1,19 @@
 import "server-only";
 
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
-
 import { env } from "@/lib/env";
-import * as schema from "./schema";
+import { createDb } from "./client";
 
 const globalForDb = globalThis as unknown as {
-  postgres: ReturnType<typeof postgres> | undefined;
+  dbBundle: ReturnType<typeof createDb> | undefined;
 };
 
-function createClient() {
-  return postgres(env.DATABASE_URL, {
-    // Transaction-mode pooler (port 6543) does not support prepared statements.
-    prepare: false,
-    max: env.NODE_ENV === "production" ? 10 : 1,
-  });
-}
-
-const client = globalForDb.postgres ?? createClient();
+const bundle =
+  globalForDb.dbBundle ??
+  createDb(env.DATABASE_URL, env.NODE_ENV === "production" ? 10 : 1);
 
 if (env.NODE_ENV !== "production") {
-  globalForDb.postgres = client;
+  globalForDb.dbBundle = bundle;
 }
 
-export const db = drizzle({ client, schema });
+export const db = bundle.db;
+export type { Db } from "./client";

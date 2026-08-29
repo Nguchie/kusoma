@@ -11,6 +11,7 @@ export {
 export {
   homeworkHelpSystemPrompt,
   topicPracticeSystemPrompt,
+  weeklyReportPrompt,
 } from "./prompts";
 export {
   extractProblemTextFromImage,

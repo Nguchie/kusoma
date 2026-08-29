@@ -1,7 +1,10 @@
 import Link from "next/link";
 
 import { DashboardCards } from "@/components/tutor/dashboard-cards";
-import { primaryButtonClass } from "@/components/tutor/styles";
+import {
+  primaryButtonClass,
+  secondaryButtonClass,
+} from "@/components/tutor/styles";
 import { requireTutorPage } from "@/server/require-tutor-page";
 import { getDashboardSummary } from "@/server/services/dashboard";
 
@@ -21,9 +24,17 @@ export default async function DashboardPage() {
 
       <DashboardCards summary={summary} />
 
-      <Link href="/students" className={`w-fit ${primaryButtonClass}`}>
-        Students
-      </Link>
+      <div className="flex flex-wrap gap-2">
+        <Link href="/students" className={primaryButtonClass}>
+          Students
+        </Link>
+        <Link href="/reports" className={secondaryButtonClass}>
+          Reports
+        </Link>
+        <Link href="/payments" className={secondaryButtonClass}>
+          Payments
+        </Link>
+      </div>
     </main>
   );
 }

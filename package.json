@@ -11,12 +11,15 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "redis:ping": "node scripts/redis-ping.mjs",
-    "chat:session-verify": "node --experimental-strip-types scripts/chat-session-verify.mjs"
+    "chat:session-verify": "node --experimental-strip-types scripts/chat-session-verify.mjs",
+    "worker": "tsx --env-file=.env.local src/worker/index.ts",
+    "worker:once": "tsx --env-file=.env.local src/worker/index.ts --once"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.122.0",
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.112.4",
+    "bullmq": "^6.3.1",
     "drizzle-orm": "^0.45.2",
     "ioredis": "^6.0.0",
     "next": "16.3.3",
@@ -35,6 +38,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.3",
     "tailwindcss": "^4",
+    "tsx": "^4.23.12",
     "typescript": "^5"
   }
 }

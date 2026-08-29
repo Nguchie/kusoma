@@ -17,6 +17,12 @@ export default async function TutorLayout({ children }: { children: ReactNode })
           <Link href="/students" className="text-zinc-600 dark:text-zinc-400">
             Students
           </Link>
+          <Link href="/reports" className="text-zinc-600 dark:text-zinc-400">
+            Reports
+          </Link>
+          <Link href="/payments" className="text-zinc-600 dark:text-zinc-400">
+            Payments
+          </Link>
         </nav>
         <div className="flex items-center gap-3">
           <span className="hidden text-sm text-zinc-500 sm:inline">

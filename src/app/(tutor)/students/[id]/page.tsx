@@ -86,9 +86,12 @@ export default async function StudentDetailPage({
         >
           Message history
         </Link>
-        <button type="button" disabled className={secondaryButtonClass}>
+        <Link
+          href={`/reports?student_id=${student.id}`}
+          className={secondaryButtonClass}
+        >
           Parent report
-        </button>
+        </Link>
       </div>
 
       <section className="flex flex-col gap-3">
