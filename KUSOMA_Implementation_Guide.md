@@ -1164,3 +1164,4 @@ From system design §15:
 4. Next step’s **Depends on** is satisfied
 
 When you finish a step, tick it here in a team copy or GitHub Project. Do not delete steps; mark them `[x]`.
+Deploy on Render and add variables after the first deployment
